@@ -17,7 +17,7 @@ User hỏi  →  Model quyết định gọi get_weather(city="Hà Nội")
 
 ```bash
 pip install -r ../requirements.txt
-export GEMINI_API_KEY=...
+Add `GOOGLE_API_KEY=...` to the repository `.env` file.
 python weather_function_calling.py
 ```
 

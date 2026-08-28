@@ -13,6 +13,8 @@ def check_environment():
     
     env_file = Path(".env")
     if not env_file.exists():
+        env_file = Path(__file__).parents[2] / ".env"
+    if not env_file.exists():
         print("❌ .env file not found")
         print("   Run: echo 'GOOGLE_API_KEY=your_key' > .env")
         return False
@@ -27,7 +29,7 @@ def check_environment():
         print("   Get key from: https://aistudio.google.com/apikey")
         return False
     
-    print(f"✅ GOOGLE_API_KEY configured ({api_key[:10]}...)")
+    print("✅ GOOGLE_API_KEY configured")
     return True
 
 def check_dependencies():
@@ -82,25 +84,26 @@ def check_mcp_server():
     """Check if MCP server is accessible"""
     print("\n🔍 Checking MCP server connectivity...")
     
-    server_url = "https://weather-mcp-server-oze7nwnjba-as.a.run.app"
+    server_url = "http://localhost:8085/mcp"
     
     try:
-        import httpx
         import asyncio
+        import httpx
+        from mcp import ClientSession
+        from mcp.client.streamable_http import streamable_http_client
         
         async def test_connection():
-            async with httpx.AsyncClient() as client:
-                response = await client.get(server_url, timeout=10.0)
-                return response.status_code
+            headers = {"Authorization": f"Bearer {os.getenv('MCP_AUTH_TOKEN', 'dev-token-abc123')}"}
+            async with httpx.AsyncClient(headers=headers) as client:
+                async with streamable_http_client(server_url, http_client=client) as (read, write, _):
+                    async with ClientSession(read, write) as session:
+                        await session.initialize()
+                        return [tool.name for tool in (await session.list_tools()).tools]
         
-        status_code = asyncio.run(test_connection())
+        tools = asyncio.run(test_connection())
         
-        if status_code in [200, 404]:  # 404 is expected for GET on MCP endpoint
-            print(f"✅ MCP server reachable at {server_url}")
-            return True
-        else:
-            print(f"⚠️  MCP server returned status {status_code}")
-            return False
+        print(f"✅ MCP server reachable at {server_url} ({', '.join(tools)})")
+        return True
             
     except Exception as e:
         print(f"❌ Cannot reach MCP server: {e}")

@@ -4,17 +4,15 @@ FROM python:3.12-slim
 # Set working directory
 WORKDIR /app
 
-# Copy dependency files
-COPY pyproject.toml ./
-
-# Install dependencies
-RUN pip install --no-cache-dir -e .
+# Install runtime dependencies. This project is a single-file app, not an
+# installable Python package.
+RUN pip install --no-cache-dir "fastmcp>=2.12.4" "httpx>=0.28.1" "mcp[cli]>=1.16.0" "uvicorn>=0.27.0"
 
 # Copy application code
 COPY weather.py ./
 
-# Expose port (Cloud Run will override this)
-EXPOSE 8080
+# Default local HTTP port; Cloud Run can override it with PORT.
+EXPOSE 8085
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1

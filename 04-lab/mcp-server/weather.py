@@ -1,12 +1,35 @@
 from typing import Any
 import asyncio
 import httpx
+import json
 import os
 from mcp.server.fastmcp import FastMCP
+from mcp.server.auth.provider import AccessToken, TokenVerifier
+from mcp.server.auth.settings import AuthSettings
 
-# Initialize FastMCP server
 port = int(os.getenv("PORT", 8085))
-mcp = FastMCP("weather", host="0.0.0.0", port=port)
+
+
+class StaticTokenVerifier(TokenVerifier):
+    """Demo bearer-token verifier; replace with OAuth/JWT in production."""
+
+    async def verify_token(self, token: str) -> AccessToken | None:
+        if token != os.getenv("MCP_AUTH_TOKEN", "dev-token-abc123"):
+            return None
+        return AccessToken(token=token, client_id="weather-agent", scopes=["weather:read"])
+
+
+mcp = FastMCP(
+    "weather",
+    instructions="Weather MCP Server v2. get_current_weather is deprecated; use get_current_weather_v2.",
+    host="0.0.0.0",
+    port=port,
+    auth=AuthSettings(
+        issuer_url=f"http://localhost:{port}",
+        resource_server_url=f"http://localhost:{port}",
+    ),
+    token_verifier=StaticTokenVerifier(),
+)
 
 # Constants
 WEATHERAPI_BASE = "https://api.weatherapi.com/v1"
@@ -47,7 +70,7 @@ async def make_weather_request(endpoint: str, params: dict[str, str]) -> dict[st
 
 @mcp.tool()
 async def get_current_weather(city: str) -> str:
-    """Get current weather conditions for a city.
+    """[v1, deprecated] Get current weather conditions for a city.
 
     Args:
         city: City name (e.g., "Hanoi", "Haiphong", "Danang", "Brisbane", "Sydney")
@@ -81,6 +104,38 @@ Visibility: {current['vis_km']} km
 
 Last updated: {current['last_updated']}
 """
+
+
+@mcp.tool()
+async def get_current_weather_v2(city: str) -> str:
+    """[v2] Get structured current weather for a city as JSON.
+
+    Args:
+        city: City name (e.g., "Hanoi", "Danang", "Brisbane")
+    """
+    data = await make_weather_request("current.json", {"q": city, "aqi": "no"})
+    if not data:
+        return json.dumps(
+            {"api_version": "2.0", "city": city, "error": "Weather data unavailable"},
+            ensure_ascii=False,
+        )
+
+    current = data["current"]
+    location = data["location"]
+    return json.dumps(
+        {
+            "api_version": "2.0",
+            "city": location["name"],
+            "country": location["country"],
+            "temperature_c": current["temp_c"],
+            "feels_like_c": current["feelslike_c"],
+            "condition": current["condition"]["text"],
+            "humidity": current["humidity"],
+            "wind_kph": current["wind_kph"],
+            "updated_at": current["last_updated"],
+        },
+        ensure_ascii=False,
+    )
 
 @mcp.tool()
 async def get_forecast(city: str, days: int = 3) -> str:
@@ -134,6 +189,26 @@ UV Index: {day_data['uv']}
 async def health_check() -> str:
     """Health check endpoint for deployment verification."""
     return "✅ Weather MCP Server is running! Ready to provide weather data for Australian cities and worldwide."
+
+
+@mcp.resource("server://info")
+def server_info() -> str:
+    """Server version, tool compatibility, and migration guidance."""
+    return json.dumps(
+        {
+            "name": "weather-mcp",
+            "version": "2.0.0",
+            "authentication": "Bearer token over Streamable HTTP",
+            "deprecated_tools": ["get_current_weather"],
+            "tools": {
+                "get_current_weather": {"version": "1.0.0", "deprecated": True},
+                "get_current_weather_v2": {"version": "2.0.0", "deprecated": False},
+                "get_forecast": {"version": "1.0.0", "deprecated": False},
+            },
+            "migration_guide": "Use get_current_weather_v2 for structured JSON. Keep get_current_weather for legacy clients.",
+        },
+        ensure_ascii=False,
+    )
 
 print("✅ MCP server initialized with Streamable HTTP transport")
 print("🔧 Available tools: get_current_weather, get_forecast, health_check")

@@ -5,5 +5,7 @@ venv/
 .env
 **/.venv
 .adk/
+.playwright-mcp/
+.serena/
 *.db
 **/.DS_Store

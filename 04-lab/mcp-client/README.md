@@ -1,5 +1,7 @@
 # Weather Agent - Google ADK with MCP Server
 
+For the complete submission checklist, authentication setup, and Claude Code registration, see the parent [Lab README](../README.md).
+
 AI agent built with **Google Agent Development Kit (ADK)** that uses tools from a local **MCP server** via Streamable HTTP transport.
 
 ## Architecture
@@ -26,7 +28,7 @@ AI agent built with **Google Agent Development Kit (ADK)** that uses tools from 
 
 ## Features
 
-- **Remote MCP Tools**: Connects to MCP server via Streamable HTTP
+- **Authenticated MCP Tools**: Connects to the local MCP server via Streamable HTTP and a bearer token
 - **3 Weather Tools**:
   - `get_current_weather(city)` - Real-time weather conditions
   - `get_forecast(city, days)` - Weather forecast up to 3 days
@@ -40,7 +42,7 @@ AI agent built with **Google Agent Development Kit (ADK)** that uses tools from 
 
 ```bash
 cd ../mcp-server
-export WEATHERAPI_KEY="your_weatherapi_key"
+$env:WEATHERAPI_KEY="your_weatherapi_key"
 uv run python weather.py
 ```
 
@@ -103,7 +105,7 @@ connection_params = StreamableHTTPConnectionParams(
 
 root_agent = Agent(
     name="weather_agent",
-    model="gemini-2.5-flash",
+    model="gemini-3.6-flash",
     tools=[weather_tools],
 )
 ```
@@ -117,16 +119,15 @@ root_agent = Agent(
    - Check `MCP_SERVER_URL` in `agent.py`
 
 2. **405 errors**: Port conflict with another application
-   - Check what's running on the port: `lsof -i :8085`
+   - Check what is running on the port: `Get-NetTCPConnection -LocalPort 8085`
    - Change port in both server and client if needed
 
 3. **Timeout errors**: Server not started
    - Start the MCP server first, then the ADK client
 
-### Fallback Mode
+### Authentication errors
 
-If MCP connection fails, the agent runs in fallback mode without tools.
-Fix the connection and restart ADK web.
+Set the same `MCP_AUTH_TOKEN` for the server and client. The default development token is `dev-token-abc123`; use a different secret before deployment.
 
 ## Environment Variables
 

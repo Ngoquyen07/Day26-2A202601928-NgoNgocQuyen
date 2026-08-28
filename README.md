@@ -1,5 +1,7 @@
 # Phân biệt MCP và Function Calling
 
+> Bài nộp hoàn chỉnh dùng Weather Decision MCP nằm tại [04-lab/README.md](04-lab/README.md).
+
 Đây là hai khái niệm hay bị nhầm lẫn nhưng thực ra ở **hai tầng khác nhau**, và **bổ sung cho nhau** chứ không thay thế.
 
 ## Cấu trúc repo
@@ -30,14 +32,15 @@ day26-mcp/
 ## Quick start
 
 ```bash
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
 
 # MCP demo (không cần API key)
 cd 02-mcp-basics && python weather_client.py
 
 # Function Calling (cần Gemini API key)
-export GEMINI_API_KEY=...
+# Add GOOGLE_API_KEY=... to .env
 cd 01-function-calling && python weather_function_calling.py
 
 # Production — Auth (2 terminal)
